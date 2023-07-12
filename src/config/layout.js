@@ -10,7 +10,7 @@ dataLayout['menu_main_loading'] = `
 dataLayout['menu_main'] = `
 <div>
     <div class="menu_main_background">
-        <img src="../data/background/menu.webp" alt="background_menu"></img>
+        <img src="./data/background/menu.webp" alt="background_menu"></img>
     </div>
     <div class="menu_main_title">
         <div class="menu_main_title_box">
@@ -24,7 +24,7 @@ dataLayout['menu_main'] = `
 dataLayout['game_tiles'] = `
 <div>
     <div class="game_tiles_background">
-        <img src="../data/background/gameplay.webp" alt="background_gameplay"></img>
+        <img src="./data/background/gameplay.webp" alt="background_gameplay"></img>
     </div>
     <div class="game_tiles_score">
         <text class="game_tiles_score_text">Score: 0</text>
