@@ -26,7 +26,7 @@ class Loader {
     getConfig(name, type, filetype) {
         var sname = name.split("_")
         var path = name.replaceAll("_", "/")
-        path = `../../data/${type}/${path}.${filetype}`
+        path = `./data/${type}/${path}.${filetype}`
         var config = null
 
         try {
