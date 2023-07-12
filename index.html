@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Game Tes</title>
+    <link rel="stylesheet" type="text/css" href="./data/layout/menu_main.css">
+    <link rel="stylesheet" type="text/css" href="./data/layout/game_tiles.css">
+    <style>
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            overflow: hidden;
+            overscroll-behavior: none;
+            background: #161616;
+        }
+
+        #canvas_main {
+          position: absolute;
+          width: 100%;
+          height: 100%;
+          display: block;
+          z-index: 1;
+          -webkit-user-select: none;
+          user-select: none;
+        }
+
+        #interface_main {
+          position: absolute;
+          width: 100%;
+          height: 100%;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          align-items: center;
+          -webkit-user-select: none;
+          user-select: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="interface_main"></div>
+    <canvas id="canvas_main" oncontextmenu="return false"></canvas>
+    <div id="script_main">
+      <script src="./src/controler/loader.js" type="module"></script>
+      <script src="./src/controler/task.js" type="module"></script>
+      <script src="./src/controler/sound.js" type="module"></script>
+      <script src="./src/controler/render.js" type="module"></script>
+      <script src="./src/controler/layout.js" type="module"></script>
+      <script src="./src/controler/script.js" type="module"></script>
+      <script src="./main.js" type="module"></script>
+    </div>
+    <div id="script_additional">
+    </div>
+</body>
+</html>
