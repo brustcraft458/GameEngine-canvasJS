@@ -99,4 +99,4 @@ function mobileClass(elements) {
     }
 }
 
-export {Layout}
+export {Layout, mobileCheck}
