@@ -4,6 +4,7 @@ import {Sprite} from "../controler/render.js"
 import {Layout} from "../controler/layout.js"
 import {Sound} from "../controler/sound.js"
 import {timer} from "../controler/task.js"
+import {grid} from "../controler/chunk.js"
 
 // Example Script
 tagScript("initialize", async() => {
@@ -39,12 +40,7 @@ tagScript("gameplay", async() => {
     musik.play()
 
     // Spawn
-    const createObj = () => {
-        var pos = {
-            x: (Math.random() - 0.5) * 300.0,
-            y: (Math.random() - 0.5) * 500.0
-        }
-
+    const createObj = (pos) => {
         let obj = new Sprite([pos.x, pos.y], [50.0, 50.0], {isAnimation: true, isButton: true})
         obj.playAnimation("stone_idle")
         obj.onTouch = async() => {
@@ -58,12 +54,19 @@ tagScript("gameplay", async() => {
             // Object Respawn
             await timer.sleep(150)
             obj.destroy()
-            createObj()
+
+            var newpos = {
+                x: (Math.random() - 0.5) * 300.0,
+                y: (Math.random() - 0.5) * 300.0
+            }
+            createObj(newpos)
         }
     }
 
-    // Spawn 20
-    for (let num = 0; num < 20; num++) {
-        createObj()
-    }
+    // Spawn with Grid
+    grid.draw((y) => {
+        grid.draw((x) => {
+            createObj({x, y})
+        }, 390.0, 3.0, 5)
+    }, 390.0, 3.0, 4,)
 })
