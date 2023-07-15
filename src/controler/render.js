@@ -26,6 +26,11 @@ class renderSprite {
     }
 
     draw() {
+        // Init
+        var event = {
+            button: lstButton.get()
+        }
+
         // Sprite Render
         for (let sid = 0, len = this.limit; sid < len; sid++) {
             const sprite = this.render[sid]
@@ -33,18 +38,24 @@ class renderSprite {
                 if (this.register.length == 0) {continue}
                 const nsprite = this.register.pop()
 
-                nsprite.setID(sid)
+                nsprite.call.setID(sid)
                 this.render[sid] = nsprite
                 continue
             }
 
-            sprite.draw()
+            if (event.button != null && sprite.param.isButton.required) {
+                sprite.call.button(event.button.type, event.button.event)
+            }
+            sprite.call.draw()
         }
 
         // Warning Message
         if (dataRender.debugDisplay) {
             if (this.register.length > 30) {ctx.fillText(`sprite leaks ${this.register.length}`, 10, 100)}
         }
+
+        // End
+        lstButton.next()
     }
 }
 
@@ -118,42 +129,38 @@ class renderAnimation {
 // Button Listener
 class listenButton {
     constructor() {
+        this.listen = []
+        this.touchState = false
+
         if (mobileCheck()) {
             canvas.addEventListener("touchstart", (event) => {
                 for (let i = 0; i < event.touches.length; i++) {
                     const touch = event.touches[i]
-                    this.call({x: touch.clientX, y: touch.clientY})   
+                    this.listen.push({type: "touch", event: touch})
                 }
             })
         } else {
             canvas.addEventListener("mousedown", (event) => {
-                this.call({x: event.clientX, y: event.clientY})
+                this.listen.push({type: "touch", event})
             })
         }
     }
 
-    call(pos) {
-        // Position
-        pos = {
-            x: (pos.x - (camera.sizeHalf.w + camera.pos.x)),
-            y: (pos.y - (camera.sizeHalf.h + camera.pos.y)) * -1.0
-        }
-        
-        // Call
-        for (let sid = 0; sid < renSprite.render.length; sid++) {
-            const sprite = renSprite.render[sid]
-            if (sprite == null) {continue}
-            if (!sprite.param.isButton.required) {continue}
-            if (sprite.param.isButton.state) {continue}
+    get() {
+        if (this.listen.length == 0) {return null}
+        return this.listen[this.listen.length - 1]
+    }
 
-            if (sprite.inRectangle(pos)) {
-                (async() => {
-                    sprite.param.isButton.state = true
-                    await sprite.onTouch()
-                    if (sprite != null) {sprite.param.isButton.state = false}
-                })()
-            }
-        }
+    next() {
+        if (this.touchState) {return}
+        this.listen.pop()
+        this.touchState = false
+    }
+
+    touch() {
+        if (this.listen.length == 0) {return}
+        this.listen.pop()
+        this.touchState = true
     }
 }
 
@@ -202,7 +209,7 @@ class Sprite {
     constructor(pos, size, param = {isAnimation: false, isButton: false}) {
         param = {
             isAnimation: {required: param.isAnimation, available: false},
-            isButton: {required: param.isButton, state: false}
+            isButton: {required: param.isButton}
         }
 
         // Component
@@ -215,15 +222,16 @@ class Sprite {
         this.img = null
         this.anim = {id: null, name: null}
         this.param = param
-        this.onTouch = null
+        this.button = {state: false, callb: null}
 
-        renSprite.register.push({
-            param,
+        // Call
+        const call = {
             draw: () => {return this.draw()},
             setID: (id) => {return this.setID(id)},
-            inRectangle: (pos) => {return this.inRectangle(pos)},
-            onTouch: () => {return this.onTouch()}
-        })
+            button: (type, event) => {return this.button.callb(type, event)}
+        }
+
+        renSprite.register.push({param, call})
     }
 
     setID(id) {
@@ -267,6 +275,34 @@ class Sprite {
             ctx.drawImage(this.img, pos.x, pos.y, this.size.w, this.size.h)
         } else if (!this.param.isAnimation.required) {
             ctx.fillRect(pos.x, pos.y, this.size.w, this.size.h)
+        }
+    }
+
+    // Button Component
+    addButtonListener(type, onTouch) {
+        this.button.type = type
+        const getEventPos = (event) => {
+            return {
+                x: (event.clientX - (camera.sizeHalf.w + camera.pos.x)),
+                y: (event.clientY - (camera.sizeHalf.h + camera.pos.y)) * -1.0
+            }
+        }
+
+        const callEvent = async() => {
+            this.button.state = true
+            await onTouch()
+            if (this != null) {this.button.state = false}
+        }
+
+        this.button.callb = (type, event) => {
+            if (this.button.state) {return}
+            if (this.button.type != type) {return}
+            let pos = getEventPos(event)
+
+            if (this.inRectangle(pos)) {
+                lstButton.touch()
+                callEvent()
+            }
         }
     }
 

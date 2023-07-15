@@ -43,7 +43,7 @@ tagScript("gameplay", async() => {
     const createObj = (pos) => {
         let obj = new Sprite([pos.x, pos.y], [50.0, 50.0], {isAnimation: true, isButton: true})
         obj.playAnimation("stone_idle")
-        obj.onTouch = async() => {
+        obj.addButtonListener("touch", async() => {
             // Play
             obj.playAnimation("stone_idle2")
 
@@ -60,7 +60,7 @@ tagScript("gameplay", async() => {
                 y: (Math.random() - 0.5) * 300.0
             }
             createObj(newpos)
-        }
+        })
     }
 
     // Spawn with Grid
