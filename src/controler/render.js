@@ -146,20 +146,24 @@ class listenButton {
         }
     }
 
+    /** @private */
+    pop() {
+        if (this.listen.length == 0) {return null}
+        return this.listen.pop()
+    }
+
     get() {
         if (this.listen.length == 0) {return null}
         return this.listen[this.listen.length - 1]
     }
 
     next() {
-        if (this.touchState) {return}
-        this.listen.pop()
-        this.touchState = false
+        if (this.touchState) {this.touchState = false; return}
+        this.pop()
     }
 
     touch() {
-        if (this.listen.length == 0) {return}
-        this.listen.pop()
+        this.pop()
         this.touchState = true
     }
 }
@@ -291,7 +295,7 @@ class Sprite {
         const callEvent = async() => {
             this.button.state = true
             await onTouch()
-            if (this != null) {this.button.state = false}
+            if (renSprite.render[this.id] != null) {this.button.state = false}
         }
 
         this.button.callb = (type, event) => {
