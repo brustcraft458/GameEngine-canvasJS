@@ -27,7 +27,7 @@ dataLayout['game_tiles'] = `
         <img src="./data/background/gameplay.webp" alt="background_gameplay"></img>
     </div>
     <div class="game_tiles_score">
-        <text class="game_tiles_score_text">Score: 0</text>
+        <text class="game_tiles_score_text" id="game_tiles_score">Score: 0</text>
     </div>
     <div class="game_tiles_body">
     </div>

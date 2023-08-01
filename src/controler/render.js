@@ -1,6 +1,7 @@
 import {dataRender} from "../config/render.js"
 import {load} from "../controler/loader.js"
 import {taskRunPriority, taskRun, Task} from "../controler/task.js"
+import {mobileCheck} from "../controler/layout.js"
 
 // Becl Studio
 // Game Engine Canvas 2D
@@ -25,6 +26,11 @@ class renderSprite {
     }
 
     draw() {
+        // Init
+        var event = {
+            button: lstButton.get()
+        }
+
         // Sprite Render
         for (let sid = 0, len = this.limit; sid < len; sid++) {
             const sprite = this.render[sid]
@@ -32,18 +38,24 @@ class renderSprite {
                 if (this.register.length == 0) {continue}
                 const nsprite = this.register.pop()
 
-                nsprite.setID(sid)
+                nsprite.call.setID(sid)
                 this.render[sid] = nsprite
                 continue
             }
 
-            sprite.draw()
+            if (event.button != null && sprite.param.isButton.required) {
+                sprite.call.button(event.button.type, event.button.event)
+            }
+            sprite.call.draw()
         }
 
         // Warning Message
         if (dataRender.debugDisplay) {
             if (this.register.length > 30) {ctx.fillText(`sprite leaks ${this.register.length}`, 10, 100)}
         }
+
+        // End
+        lstButton.next()
     }
 }
 
@@ -114,6 +126,48 @@ class renderAnimation {
     }
 }
 
+// Button Listener
+class listenButton {
+    constructor() {
+        this.listen = []
+        this.touchState = false
+
+        if (mobileCheck()) {
+            canvas.addEventListener("touchstart", (event) => {
+                for (let i = 0; i < event.touches.length; i++) {
+                    const touch = event.touches[i]
+                    this.listen.push({type: "touch", event: touch})
+                }
+            })
+        } else {
+            canvas.addEventListener("mousedown", (event) => {
+                this.listen.push({type: "touch", event})
+            })
+        }
+    }
+
+    /** @private */
+    pop() {
+        if (this.listen.length == 0) {return null}
+        return this.listen.pop()
+    }
+
+    get() {
+        if (this.listen.length == 0) {return null}
+        return this.listen[this.listen.length - 1]
+    }
+
+    next() {
+        if (this.touchState) {this.touchState = false; return}
+        this.pop()
+    }
+
+    touch() {
+        this.pop()
+        this.touchState = true
+    }
+}
+
 function renderGame() {
     // Render Now
     window.requestAnimationFrame(renderGame)
@@ -156,9 +210,10 @@ function renderStart() {
 
 // Sprite for Render
 class Sprite {
-    constructor(pos, size, param = {isAnimation: false}) {
+    constructor(pos, size, param = {isAnimation: false, isButton: false}) {
         param = {
-            isAnimation: {required: param.isAnimation, available: false}
+            isAnimation: {required: param.isAnimation, available: false},
+            isButton: {required: param.isButton}
         }
 
         // Component
@@ -171,15 +226,35 @@ class Sprite {
         this.img = null
         this.anim = {id: null, name: null}
         this.param = param
+        this.button = {state: false, callb: null}
 
-        renSprite.register.push({
+        // Call
+        const call = {
             draw: () => {return this.draw()},
-            setID: (id) => {return this.setID(id)}
-        })
+            setID: (id) => {return this.setID(id)},
+            button: (type, event) => {return this.button.callb(type, event)}
+        }
+
+        renSprite.register.push({param, call})
     }
 
     setID(id) {
         this.id = id
+    }
+
+    inRectangle(touchPos) {
+        // Box
+        var a = this.pos.x - touchPos.x
+        var b = this.pos.y - touchPos.y
+        var distance = {
+            x: Math.sqrt(a * a),
+            y: Math.sqrt(b * b)
+        }
+        
+        if (this.sizeHalf.w > distance.x && this.sizeHalf.h > distance.y) {
+            return true
+        }
+        return false
     }
 
     draw() {
@@ -204,6 +279,34 @@ class Sprite {
             ctx.drawImage(this.img, pos.x, pos.y, this.size.w, this.size.h)
         } else if (!this.param.isAnimation.required) {
             ctx.fillRect(pos.x, pos.y, this.size.w, this.size.h)
+        }
+    }
+
+    // Button Component
+    addButtonListener(type, onTouch) {
+        this.button.type = type
+        const getEventPos = (event) => {
+            return {
+                x: (event.clientX - (camera.sizeHalf.w + camera.pos.x)),
+                y: (event.clientY - (camera.sizeHalf.h + camera.pos.y)) * -1.0
+            }
+        }
+
+        const callEvent = async() => {
+            this.button.state = true
+            await onTouch()
+            if (renSprite.render[this.id] != null) {this.button.state = false}
+        }
+
+        this.button.callb = (type, event) => {
+            if (this.button.state) {return}
+            if (this.button.type != type) {return}
+            let pos = getEventPos(event)
+
+            if (this.inRectangle(pos)) {
+                lstButton.touch()
+                callEvent()
+            }
         }
     }
 
@@ -242,7 +345,6 @@ class Sprite {
         if (animation.data.loop == "end") {
             animation.frame.current = 0
         }
-        //this.img = renAnim.img[this.anim.id]
     }
 
     destroy(param = {isWaitScreen: false}) {
@@ -398,5 +500,6 @@ class Animation {
 // Class to var
 var renSprite = new renderSprite()
 var renAnim = new renderAnimation()
+var lstButton = new listenButton()
 var camera = new Camera([0.0, 0.0])
 export {renderStart, Sprite, Texture, Animation, camera}

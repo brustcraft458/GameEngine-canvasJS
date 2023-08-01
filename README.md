@@ -6,6 +6,7 @@
 - Asset Manager
 - Accurate frame by frame Animation
 - Sprite Render fits the window
+- Multi Touch Button
 - Instant Sound play
 - Task with timer
 - Simple Script for Create Game
