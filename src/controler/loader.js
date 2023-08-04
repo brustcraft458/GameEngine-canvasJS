@@ -1,6 +1,8 @@
 import {dataAnim} from "../config/anim.js"
 import {dataLayout} from "../config/layout.js"
 import {dataSound} from "../config/sound.js"
+import {dataShader} from "../config/webgl.js"
+import {tree} from "../controler/basic.js"
 
 // Becl Studio
 // Game Engine Canvas 2D
@@ -32,15 +34,21 @@ class Loader {
         try {
             switch (type) {
                 case "animation":
-                    config = dataAnim[sname[0]][sname[1]]
+                    config = dataAnim
                 break;
                 case "sound":
-                    config = dataSound[sname[0]][sname[1]]
+                    config = dataSound
+                break;
+                case "shader":
+                    config = dataShader
                 break;
             
                 default:
                 throw "type invalid";
             }
+
+            if (name == "all-name") {return Object.getOwnPropertyNames(config)}
+            config = tree.getChild(config, sname)
         } catch (e) {
             return null
         }

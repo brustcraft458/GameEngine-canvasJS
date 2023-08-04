@@ -1,7 +1,8 @@
 import {dataRender} from "../config/render.js"
 import {load} from "../controler/loader.js"
 import {taskRunPriority, taskRun, Task} from "../controler/task.js"
-import {mobileCheck} from "../controler/layout.js"
+import {check, isMobile} from "../controler/basic.js"
+import {webgl} from "../controler/webgl.js"
 
 // Becl Studio
 // Game Engine Canvas 2D
@@ -10,7 +11,6 @@ import {mobileCheck} from "../controler/layout.js"
 
 // Initialize
 const canvas = document.querySelector('canvas')
-const ctx = canvas.getContext('2d')
 const mixcan = document.createElement("canvas")
 const mixctx = mixcan.getContext('2d', {willReadFrequently: true})
 var taskRunCount = 0
@@ -49,11 +49,6 @@ class renderSprite {
             sprite.call.draw()
         }
 
-        // Warning Message
-        if (dataRender.debugDisplay) {
-            if (this.register.length > 30) {ctx.fillText(`sprite leaks ${this.register.length}`, 10, 100)}
-        }
-
         // End
         lstButton.next()
     }
@@ -64,7 +59,7 @@ class renderAnimation {
     constructor() {
         this.loaded = []
         this.render = []
-        this.img = []
+        this.texture = []
 
         // Animation Loader
         load.callb.animation = async (name) => {
@@ -94,7 +89,7 @@ class renderAnimation {
                     promise.push(new Promise(async (resolve, reject) => {
                         var texture = new Texture(anim.path)
                         await texture.load()
-                        var textureList = await texture.extractImage(anim.frame.max)
+                        var textureList = await texture.extractImage(anim.frame.max, {isRender: true})
         
                         anim.textureList = textureList
                         anim.available = true
@@ -120,7 +115,7 @@ class renderAnimation {
                 anim.frame.current++
             }
 
-            this.img[id] = anim.textureList[anim.frame.current]
+            this.texture[id] = anim.textureList[anim.frame.current]
             anim.frame.delta = frameDelta.now
         }
     }
@@ -132,7 +127,7 @@ class listenButton {
         this.listen = []
         this.touchState = false
 
-        if (mobileCheck()) {
+        if (isMobile()) {
             canvas.addEventListener("touchstart", (event) => {
                 for (let i = 0; i < event.touches.length; i++) {
                     const touch = event.touches[i]
@@ -182,18 +177,9 @@ function renderGame() {
     }
 
     // Render
-    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    webgl.clearScreen()
     renAnim.draw()
     renSprite.draw()
-
-    // Text Debug
-    if (dataRender.debugDisplay) {
-        var frameFps = parseInt(1000 / (frameDelta.now - frameDelta.then))
-        ctx.font = "30px Arial"
-        ctx.fillStyle = "white"
-        ctx.fillText(`fps ${frameFps} delta ${frameDelta.now}`, 10, 50)
-        ctx.fillText(`anim ${renAnim.img.length}`, 10, 150)
-    }
 
     // End
     frameDelta.then = frameDelta.now
@@ -212,8 +198,8 @@ function renderStart() {
 class Sprite {
     constructor(pos, size, param = {isAnimation: false, isButton: false}) {
         param = {
-            isAnimation: {required: param.isAnimation, available: false},
-            isButton: {required: param.isButton}
+            isAnimation: {required: check.boolean(param.isAnimation), available: false},
+            isButton: {required: check.boolean(param.isButton)}
         }
 
         // Component
@@ -224,7 +210,9 @@ class Sprite {
         this.sizeHalf = {w: (size[0] * 0.5), h: (size[1] * 0.5)}
         this.velo = {x: 0, y: 0}
         this.img = null
+        this.tex = null
         this.anim = {id: null, name: null}
+        this.shader = "image"
         this.param = param
         this.button = {state: false, callb: null}
 
@@ -262,23 +250,16 @@ class Sprite {
         this.pos.x += this.velo.x
         this.pos.y += this.velo.y
 
-        // Camera Calc
-        var pos = {
-            x: ((this.pos.x - this.sizeHalf.w) + (camera.sizeHalf.w + camera.pos.x)),
-            y: (((this.pos.y * -1.0) - this.sizeHalf.h) + (camera.sizeHalf.h + camera.pos.y))
-        }
-
         // Animation
         if (this.anim.id != null) {
-            ctx.drawImage(renAnim.img[this.anim.id], pos.x, pos.y, this.size.w, this.size.h)
+            const texture = renAnim.texture[this.anim.id]
+            webgl.drawImage(texture.tex, this.pos.x, this.pos.y, this.size.w, this.size.h, this.shader)
             return
         }
 
         // Render
-        if (this.img != null) {
-            ctx.drawImage(this.img, pos.x, pos.y, this.size.w, this.size.h)
-        } else if (!this.param.isAnimation.required) {
-            ctx.fillRect(pos.x, pos.y, this.size.w, this.size.h)
+        if (this.tex != null) {
+            webgl.drawImage(this.tex, this.pos.x, this.pos.y, this.size.w, this.size.h, this.shader)
         }
     }
 
@@ -330,9 +311,19 @@ class Sprite {
         return this.pos
     }
 
+    // Shader Component
+    setShader(name) {
+        if (!webgl.checkProgram(name)) {throw `shader not available "${name}"`}
+        this.shader = name
+    }
+
     // Image Component
-    setImage(texture = {img: null}) {
-        this.img = texture.img
+    setImage(texture) {
+        if (texture.param.isRender) {
+            this.tex = texture.tex
+        } else {
+            this.img = texture.img
+        }
     }
 
     // Animation Component
@@ -378,6 +369,7 @@ class Camera {
     screenResize(size) {
         canvas.width = size.w
         canvas.height = size.h
+        webgl.resizeScreen(size)
         this.sizeHalf = {w: (size.w * 0.5), h: (size.h * 0.5)}
     }
 
@@ -401,61 +393,56 @@ class Camera {
 
 // Texture Manager
 class Texture {
-    constructor(path, param = {isSpecial: false}) {
-        this.path = path
+    constructor(src, param = {isRender: false}) {
+        this.tex = null
+        this.path = null
         this.img = null
-        this.imgori = null
-        this.color = null
+        this.size = {w: 0.0, h: 0.0}
         this.param = param
+
+        switch (src.constructor.name) {
+            case "ImageBitmap":
+                if (param.isRender) {
+                    this.tex = webgl.loadImageTexture(src)
+                } else {
+                    this.img = src
+                }
+
+                this.size = {w: src.width, h: src.height}
+            break;
+            case "String":
+                this.path = src
+            break;
+        
+            default:
+            break;
+        }
     }
 
-    async load() {
-        await new Promise((resolve, reject) => {
+    load() {
+        return new Promise((resolve, reject) => {
             // Load Image
-            if (this.img != null || this.imgori != null) {
+            if (this.img != null || this.tex != null) {
                 resolve(true)
                 return
             }
+
             var img = new Image()
             img.onload = () => {
-                if (this.param.isSpecial) {
-                    this.imgori = img
+                if (this.param.isRender) {
+                    this.tex = webgl.loadImageTexture(img)
                 } else {
                     this.img = img
                 }
+
+                this.size = {w: img.width, h: img.height}
                 resolve(true)
             }
             img.src = this.path
         })
-
-        await new Promise((resolve, reject) => {
-            // Canvas
-            if (!this.param.isSpecial) {
-                resolve(true)
-                return
-            }
-            mixcan.width = this.imgori.width
-            mixcan.height = this.imgori.height
-            mixctx.clearRect(0, 0, mixcan.width, mixcan.height)
-            
-            // Color
-            if (this.color != null) {
-                mixctx.fillStyle = `rgb(${this.color.r}, ${this.color.g}, ${this.color.b})`
-                mixctx.fillRect(0, 0, this.imgori.width, this.imgori.height)
-                mixctx.globalCompositeOperation = "destination-atop"
-            }
-
-            // Save Buffer
-            mixctx.drawImage(this.imgori, 0, 0)
-            var img = mixctx.getImageData(0, 0, this.imgori.width, this.imgori.height)
-            createImageBitmap(img).then(img => {
-                this.img = img
-                resolve(true)
-            })
-        })
     }
 
-    async extractImage(max) {
+    async extractImage(max, param) {
         mixcan.width = this.img.width / max
         mixcan.height = this.img.height
         var imgList = []
@@ -467,13 +454,9 @@ class Texture {
             mixctx.drawImage(this.img, frm * frmWidth, 0, frmWidth, frmHeight, 0, 0, frmWidth, frmHeight)
             var img = mixctx.getImageData(0, 0, mixcan.width, mixcan.height)
             img = await createImageBitmap(img)
-            imgList.push(img)
+            imgList.push(new Texture(img, param))
         }
         return imgList
-    }
-
-    setColor(col) {
-        this.color = {r: col[0], g: col[1], b: col[2]}
     }
 }
 

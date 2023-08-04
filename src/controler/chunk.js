@@ -1,3 +1,5 @@
+import {isEven} from "../controler/basic.js"
+
 // Becl Studio
 // Game Engine Canvas 2D
 // ----------------------
@@ -23,11 +25,6 @@ class Grid {
             pos += step
         }
     }
-}
-
-// Additional Functions
-function isEven(n) {
-    return n % 2 == 0;
 }
 
 // Class to var
