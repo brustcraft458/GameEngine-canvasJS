@@ -14,7 +14,7 @@ const canvas = document.querySelector('canvas')
 const mixcan = document.createElement("canvas")
 const mixctx = mixcan.getContext('2d', {willReadFrequently: true})
 var taskRunCount = 0
-var frameDelta = {now: 0, then: performance.now(), delay: 26}
+var frameDelta = {now: 0, then: performance.now(), delay: dataRender.frameDelay}
 document.addEventListener('contextmenu', event => event.preventDefault())
 
 // Sprite for Render
@@ -38,15 +38,15 @@ class renderSprite {
                 if (this.register.length == 0) {continue}
                 const nsprite = this.register.pop()
 
-                nsprite.call.setID(sid)
+                nsprite.setID(sid)
                 this.render[sid] = nsprite
                 continue
             }
 
             if (event.button != null && sprite.param.isButton.required) {
-                sprite.call.button(event.button.type, event.button.event)
+                sprite.button.callb(event.button.type, event.button.event)
             }
-            sprite.call.draw()
+            sprite.draw()
         }
 
         // End
@@ -204,7 +204,6 @@ class Sprite {
 
         // Component
         this.id = null
-        this.loaded = false
         this.pos = {x: pos[0], y: pos[1]}
         this.size = {w: size[0], h: size[1]}
         this.sizeHalf = {w: (size[0] * 0.5), h: (size[1] * 0.5)}
@@ -216,14 +215,7 @@ class Sprite {
         this.param = param
         this.button = {state: false, callb: null}
 
-        // Call
-        const call = {
-            draw: () => {return this.draw()},
-            setID: (id) => {return this.setID(id)},
-            button: (type, event) => {return this.button.callb(type, event)}
-        }
-
-        renSprite.register.push({param, call})
+        renSprite.register.push(this)
     }
 
     setID(id) {
