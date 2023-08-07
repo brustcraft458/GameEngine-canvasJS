@@ -38,15 +38,15 @@ class renderSprite {
                 if (this.register.length == 0) {continue}
                 const nsprite = this.register.pop()
 
-                nsprite.setID(sid)
+                nsprite.call.setID(sid)
                 this.render[sid] = nsprite
                 continue
             }
 
             if (event.button != null && sprite.param.isButton.required) {
-                sprite.button.callb(event.button.type, event.button.event)
+                sprite.call.button(event.button.type, event.button.event)
             }
-            sprite.draw()
+            sprite.call.draw()
         }
 
         // End
@@ -196,6 +196,7 @@ function renderStart() {
 
 // Sprite for Render
 class Sprite {
+    #id; #pos; #size; #sizeHalf; #velo; #img; #tex; #anim; #shader; #param; #button;
     constructor(pos, size, param = {isAnimation: false, isButton: false}) {
         param = {
             isAnimation: {required: check.boolean(param.isAnimation), available: false},
@@ -203,61 +204,68 @@ class Sprite {
         }
 
         // Component
-        this.id = null
-        this.pos = {x: pos[0], y: pos[1]}
-        this.size = {w: size[0], h: size[1]}
-        this.sizeHalf = {w: (size[0] * 0.5), h: (size[1] * 0.5)}
-        this.velo = {x: 0, y: 0}
-        this.img = null
-        this.tex = null
-        this.anim = {id: null, name: null}
-        this.shader = "image"
-        this.param = param
-        this.button = {state: false, callb: null}
+        this.#id = null
+        this.#pos = {x: pos[0], y: pos[1]}
+        this.#size = {w: size[0], h: size[1]}
+        this.#sizeHalf = {w: (size[0] * 0.5), h: (size[1] * 0.5)}
+        this.#velo = {x: 0, y: 0}
+        this.#img = null
+        this.#tex = null
+        this.#anim = {id: null, name: null}
+        this.#shader = "image"
+        this.#param = param
+        this.#button = {state: false, callb: null}
 
-        renSprite.register.push(this)
-    }
+        // Call
+        const call = {
+            setID: (id) => {
+                this.#id = id
+            },
 
-    setID(id) {
-        this.id = id
+            draw: () => {
+                // Velocity
+                this.#pos.x += this.#velo.x
+                this.#pos.y += this.#velo.y
+        
+                // Animation
+                if (this.#anim.id != null) {
+                    const texture = renAnim.texture[this.#anim.id]
+                    webgl.drawImage(texture.tex, this.#pos.x, this.#pos.y, this.#size.w, this.#size.h, this.#shader)
+                    return
+                }
+        
+                // Render
+                if (this.#tex != null) {
+                    webgl.drawImage(this.#tex, this.#pos.x, this.#pos.y, this.#size.w, this.#size.h, this.#shader)
+                }
+            },
+
+            button: (type, onTouch) => {
+                return this.#button.callb(type, onTouch)
+            }
+        }
+
+        renSprite.register.push({param, call})
     }
 
     inRectangle(touchPos) {
         // Box
-        var a = this.pos.x - touchPos.x
-        var b = this.pos.y - touchPos.y
+        var a = this.#pos.x - touchPos.x
+        var b = this.#pos.y - touchPos.y
         var distance = {
             x: Math.sqrt(a * a),
             y: Math.sqrt(b * b)
         }
         
-        if (this.sizeHalf.w > distance.x && this.sizeHalf.h > distance.y) {
+        if (this.#sizeHalf.w > distance.x && this.#sizeHalf.h > distance.y) {
             return true
         }
         return false
     }
 
-    draw() {
-        // Velocity
-        this.pos.x += this.velo.x
-        this.pos.y += this.velo.y
-
-        // Animation
-        if (this.anim.id != null) {
-            const texture = renAnim.texture[this.anim.id]
-            webgl.drawImage(texture.tex, this.pos.x, this.pos.y, this.size.w, this.size.h, this.shader)
-            return
-        }
-
-        // Render
-        if (this.tex != null) {
-            webgl.drawImage(this.tex, this.pos.x, this.pos.y, this.size.w, this.size.h, this.shader)
-        }
-    }
-
     // Button Component
     addButtonListener(type, onTouch) {
-        this.button.type = type
+        this.#button.type = type
         const getEventPos = (event) => {
             return {
                 x: (event.clientX - (camera.sizeHalf.w + camera.pos.x)),
@@ -266,14 +274,14 @@ class Sprite {
         }
 
         const callEvent = async() => {
-            this.button.state = true
+            this.#button.state = true
             await onTouch()
-            if (renSprite.render[this.id] != null) {this.button.state = false}
+            if (renSprite.render[this.#id] != null) {this.#button.state = false}
         }
 
-        this.button.callb = (type, event) => {
-            if (this.button.state) {return}
-            if (this.button.type != type) {return}
+        this.#button.callb = (type, event) => {
+            if (this.#button.state) {return}
+            if (this.#button.type != type) {return}
             let pos = getEventPos(event)
 
             if (this.inRectangle(pos)) {
@@ -285,46 +293,46 @@ class Sprite {
 
     // Position Component
     setPosition(pos = {x: null, y: null}) {
-        if (pos.x != null) {this.pos.x = pos.x}
-        if (pos.y != null) {this.pos.y = pos.y}
+        if (pos.x != null) {this.#pos.x = pos.x}
+        if (pos.y != null) {this.#pos.y = pos.y}
     }
 
     setSize(size = {w: null, h: null}) {
-        if (size.w != null) {this.size.w = size.w}
-        if (size.h != null) {this.size.h = size.h}
+        if (size.w != null) {this.#size.w = size.w}
+        if (size.h != null) {this.#size.h = size.h}
     }
 
     setVelocity(speed = {x: null, y: null}) {
-        if (speed.x != null) {this.velo.x = speed.x}
-        if (speed.y != null) {this.velo.y = speed.y}
+        if (speed.x != null) {this.#velo.x = speed.x}
+        if (speed.y != null) {this.#velo.y = speed.y}
     }
 
     getPosition() {
-        return this.pos
+        return this.#pos
     }
 
     // Shader Component
     setShader(name) {
         if (!webgl.checkProgram(name)) {throw `shader not available "${name}"`}
-        this.shader = name
+        this.#shader = name
     }
 
     // Image Component
     setImage(texture) {
         if (texture.param.isRender) {
-            this.tex = texture.tex
+            this.#tex = texture.tex
         } else {
-            this.img = texture.img
+            this.#img = texture.img
         }
     }
 
     // Animation Component
     playAnimation(name) {
         const newanim = new Animation(name)
-        this.anim.name = newanim.name
-        this.anim.id = newanim.id
+        this.#anim.name = newanim.name
+        this.#anim.id = newanim.id
 
-        const animation = renAnim.render[this.anim.id]
+        const animation = renAnim.render[this.#anim.id]
         if (animation.data.loop == "end") {
             animation.frame.current = 0
         }
@@ -332,7 +340,7 @@ class Sprite {
 
     destroy(param = {isWaitScreen: false}) {
         const sdestroy = () => {
-            renSprite.render[this.id] = null
+            renSprite.render[this.#id] = null
         }
         if (!param.isWaitScreen) {sdestroy(); return}
 
