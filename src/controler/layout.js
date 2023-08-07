@@ -62,26 +62,23 @@ load.callreq.layout = () => {
 }
 
 class Layout {
+    #name; #id; #component
     constructor(name) {
-        this.name = name
-        this.id = this.isAvailable()
-        if (this.id == null) {throw `layout not available "${name}"`}
+        var id = layoutQuene.loaded.indexOf(name)
+        if (this.#id == -1) {throw `layout not available "${name}"`}
 
+        this.#name = name
+        this.#id = id
         /** @type {Document} */
-        this.component = layoutQuene.listed[this.id].component
-    }
-
-    /** @private */
-    isAvailable() {
-        var id = layoutQuene.loaded.indexOf(this.name)
-        if (id == -1) {
-            return null
-        }
-        return id
+        this.#component = layoutQuene.listed[id].component
     }
 
     display() {
-        body.innerHTML = this.component.firstChild.innerHTML
+        body.innerHTML = this.#component.firstChild.innerHTML
+    }
+
+    getComponent() {
+        return this.#component
     }
 }
 

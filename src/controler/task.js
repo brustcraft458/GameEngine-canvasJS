@@ -44,13 +44,24 @@ function taskRunPriority(frameDeltaNow) {
 }
 
 class Task {
+    #id; #param;
     constructor(callb, delay, param = {isLoop: false, isPriority: false}) {
-        this.param = param
+        const generateID = () => {
+            let id = null
+            if (taskQuene.empty.length == 0) {
+                id = taskQuene.num
+                taskQuene.num++
+            } else {
+                id = taskQuene.empty.pop()
+            }
+            return id
+        }
+
         var id = null
         if (param.isPriority) {
             id = taskprQuene.num
         } else {
-            id = this.generateID()
+            id = generateID()
         }
         
         var task = {
@@ -67,33 +78,15 @@ class Task {
             taskQuene.listed[id] = task
         }
 
-        this.id = id
-    }
-
-    generateID() {
-        var id = null
-        if (taskQuene.empty.length == 0) {
-            id = taskQuene.num
-            taskQuene.num++
-        } else {
-            id = taskQuene.empty.pop()
-        }
-        return id
+        this.#id = id
+        this.#param = param
     }
 
     stop() {
-        if (this.param.isPriority) {
-            taskprQuene.listed[this.id] = null
+        if (this.#param.isPriority) {
+            taskprQuene.listed[this.#id] = null
         } else {
-            taskQuene.listed[this.id] = null
-        }
-    }
-
-    clearAll() {
-        if (this.param.isPriority) {
-            taskprQuene = {garbage: 0, num: 0, listed: []}
-        } else {
-            taskQuene = {num: 0, empty: [], listed: []}
+            taskQuene.listed[this.#id] = null
         }
     }
 }

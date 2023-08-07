@@ -73,54 +73,47 @@ load.callreq.sound = () => {
 }
 
 class Sound {
+    #name; #id; #audio;
     constructor(name) {
-        this.name = name
-        this.id = this.isAvailable()
-        if (this.id == null) {throw `sound not available "${name}"`}
+        var id = soundQuene.loaded.indexOf(name)
+        if (id == -1) {throw `sound not available "${name}"`}
 
+        this.#name = name
+        this.#id = id
         /** @type {HTMLAudioElement} */
-        this.audio = soundQuene.listed[this.id].audio
-    }
-
-    /** @private */
-    isAvailable() {
-        var id = soundQuene.loaded.indexOf(this.name)
-        if (id == -1) {
-            return null
-        }
-        return id
+        this.#audio = soundQuene.listed[id].audio
     }
 
     play() {
-        this.audio.currentTime = 0
-        this.audio.volume = 1.0
+        this.#audio.currentTime = 0
+        this.#audio.volume = 1.0
     }
 
     stop() {
-        this.audio.volume = 0.0
-        this.audio.currentTime = 0
+        this.#audio.volume = 0.0
+        this.#audio.currentTime = 0
     }
 
     volumeFadeIn(timeDelay) {
-        var volume = this.audio.volume
+        var volume = this.#audio.volume
         var loop = new Task(() => {
             volume += 0.1
             if (volume > 1.0) {
                 loop.stop()
             } else {
-                this.audio.volume = volume
+                this.#audio.volume = volume
             }
         }, timeDelay, {isLoop: true})
     }
 
     volumeFadeOut(timeDelay) {
-        var volume = this.audio.volume
+        var volume = this.#audio.volume
         var loop = new Task(() => {
             volume -= 0.1
             if (0.0 > volume) {
                 loop.stop()
             } else {
-                this.audio.volume = volume
+                this.#audio.volume = volume
             }
         }, timeDelay, {isLoop: true})
     }
