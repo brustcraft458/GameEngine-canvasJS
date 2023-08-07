@@ -209,9 +209,8 @@ class Sprite {
         this.#size = {w: size[0], h: size[1]}
         this.#sizeHalf = {w: (size[0] * 0.5), h: (size[1] * 0.5)}
         this.#velo = {x: 0, y: 0}
-        this.#img = null
         this.#tex = null
-        this.#anim = {id: null, name: null}
+        this.#anim = null
         this.#shader = "image"
         this.#param = param
         this.#button = {state: false, callb: null}
@@ -228,9 +227,9 @@ class Sprite {
                 this.#pos.y += this.#velo.y
         
                 // Animation
-                if (this.#anim.id != null) {
-                    const texture = renAnim.texture[this.#anim.id]
-                    webgl.drawImage(texture.tex, this.#pos.x, this.#pos.y, this.#size.w, this.#size.h, this.#shader)
+                if (this.#anim != null) {
+                    const texture = this.#anim.getTexture()
+                    webgl.drawImage(texture, this.#pos.x, this.#pos.y, this.#size.w, this.#size.h, this.#shader)
                     return
                 }
         
@@ -267,9 +266,11 @@ class Sprite {
     addButtonListener(type, onTouch) {
         this.#button.type = type
         const getEventPos = (event) => {
+            const camSizeHalf = camera.getSizeHalf()
+            const camPos = camera.getPosition()
             return {
-                x: (event.clientX - (camera.sizeHalf.w + camera.pos.x)),
-                y: (event.clientY - (camera.sizeHalf.h + camera.pos.y)) * -1.0
+                x: (event.clientX - (camSizeHalf.w + camPos.x)),
+                y: (event.clientY - (camSizeHalf.h + camPos.y)) * -1.0
             }
         }
 
@@ -319,20 +320,18 @@ class Sprite {
 
     // Image Component
     setImage(texture) {
-        if (texture.param.isRender) {
-            this.#tex = texture.tex
-        } else {
-            this.#img = texture.img
-        }
+        this.#tex = texture.getImage()
+    }
+
+    getID() {
+        return this.#id
     }
 
     // Animation Component
     playAnimation(name) {
-        const newanim = new Animation(name)
-        this.#anim.name = newanim.name
-        this.#anim.id = newanim.id
+        this.#anim = new Animation(name)
 
-        const animation = renAnim.render[this.#anim.id]
+        const animation = this.#anim.getData()
         if (animation.data.loop == "end") {
             animation.frame.current = 0
         }
@@ -346,8 +345,9 @@ class Sprite {
 
         var task = new Task(() => {
             var pos = this.getPosition()
-            var a = pos.x - camera.pos.x
-            var b = pos.y - camera.pos.y
+            var camPos = camera.getPosition()
+            var a = pos.x - camPos.x
+            var b = pos.y - camPos.y
             var distance = Math.sqrt((a * a) + (b * b))
             if (distance > 1200.0) {
                 sdestroy()
@@ -360,58 +360,68 @@ class Sprite {
 
 // Camera
 class Camera {
+    #pos; #sizeHalf; #folowSprite;
     constructor(pos) {
-        this.pos = {x: pos[0], y: pos[1]}
-        this.sizeHalf = {w: (canvas.width * 0.5), h: (canvas.height * 0.5)}
-        this.folowSprite = null
+        this.#pos = {x: pos[0], y: pos[1]}
+        this.#sizeHalf = {w: (canvas.width * 0.5), h: (canvas.height * 0.5)}
+        this.#folowSprite = null
     }
 
     screenResize(size) {
         canvas.width = size.w
         canvas.height = size.h
         webgl.resizeScreen(size)
-        this.sizeHalf = {w: (size.w * 0.5), h: (size.h * 0.5)}
+        this.#sizeHalf = {w: (size.w * 0.5), h: (size.h * 0.5)}
     }
 
     setFollowSprite(sprite) {
-        this.folowSprite = sprite.id
+        this.#folowSprite = sprite.getID()
     }
 
     setFollowNormal() {
-        this.folowSprite = null
+        this.#folowSprite = null
     }
 
     setPosition(pos = {x: null, y: null}) {
-        if (pos.x != null) {this.pos.x = pos.x}
-        if (pos.y != null) {this.pos.y = pos.y}
+        if (pos.x != null) {this.#pos.x = pos.x}
+        if (pos.y != null) {this.#pos.y = pos.y}
+    }
+
+    getFollowSprite(spriteID) {
+        return (spriteID == this.#folowSprite) ? true : false
     }
 
     getPosition() {
-        return this.pos
+        return this.#pos
+    }
+
+    getSizeHalf() {
+        return this.#sizeHalf
     }
 }
 
 // Texture Manager
 class Texture {
+    #tex; #path; #img; #size; #param;
     constructor(src, param = {isRender: false}) {
-        this.tex = null
-        this.path = null
-        this.img = null
-        this.size = {w: 0.0, h: 0.0}
-        this.param = param
+        this.#tex = null
+        this.#path = null
+        this.#img = null
+        this.#size = {w: 0.0, h: 0.0}
+        this.#param = param
 
         switch (src.constructor.name) {
             case "ImageBitmap":
                 if (param.isRender) {
-                    this.tex = webgl.loadImageTexture(src)
+                    this.#tex = webgl.loadImageTexture(src)
                 } else {
-                    this.img = src
+                    this.#img = src
                 }
 
-                this.size = {w: src.width, h: src.height}
+                this.#size = {w: src.width, h: src.height}
             break;
             case "String":
-                this.path = src
+                this.#path = src
             break;
         
             default:
@@ -422,61 +432,69 @@ class Texture {
     load() {
         return new Promise((resolve, reject) => {
             // Load Image
-            if (this.img != null || this.tex != null) {
+            if (this.#img != null || this.#tex != null) {
                 resolve(true)
                 return
             }
 
             var img = new Image()
             img.onload = () => {
-                if (this.param.isRender) {
-                    this.tex = webgl.loadImageTexture(img)
+                if (this.#param.isRender) {
+                    this.#tex = webgl.loadImageTexture(img)
                 } else {
-                    this.img = img
+                    this.#img = img
                 }
 
-                this.size = {w: img.width, h: img.height}
+                this.#size = {w: img.width, h: img.height}
                 resolve(true)
             }
-            img.src = this.path
+            img.src = this.#path
         })
     }
 
     async extractImage(max, param) {
-        mixcan.width = this.img.width / max
-        mixcan.height = this.img.height
+        mixcan.width = this.#img.width / max
+        mixcan.height = this.#img.height
         var imgList = []
-        var frmWidth = this.img.width / max
-        var frmHeight = this.img.height
+        var frmWidth = this.#img.width / max
+        var frmHeight = this.#img.height
 
         for (let frm = 0; frm < max; frm++) {
             mixctx.clearRect(0, 0, mixcan.width, mixcan.height)
-            mixctx.drawImage(this.img, frm * frmWidth, 0, frmWidth, frmHeight, 0, 0, frmWidth, frmHeight)
+            mixctx.drawImage(this.#img, frm * frmWidth, 0, frmWidth, frmHeight, 0, 0, frmWidth, frmHeight)
             var img = mixctx.getImageData(0, 0, mixcan.width, mixcan.height)
             img = await createImageBitmap(img)
-            imgList.push(new Texture(img, param))
+            imgList.push(new Texture(img, param).getImage())
         }
         return imgList
+    }
+
+    getImage() {
+        if (this.#param.isRender) {return this.#tex}
+        return this.#img
+    }
+
+    getSize() {
+        return this.#size
     }
 }
 
 // Animation Sprite
 class Animation {
+    #name; #id;
     constructor(name) {
-        this.name = name
-        this.id = this.isAvailable()
-        if (this.id == null) {throw `animation not available ${name}`}
-    }
-
-    /** @private */
-    isAvailable() {
-        var id = renAnim.loaded.indexOf(this.name)
-        if (id == -1) {return null}
-        return id
+        var id = renAnim.loaded.indexOf(name)
+        if (id == -1) {throw `animation not available ${name}`}
+        this.#name = name
+        this.#id = id
     }
 
     getData() {
-        return renAnim.render[this.id]
+        return renAnim.render[this.#id]
+    }
+
+    getTexture() {
+        return renAnim.texture[this.#id]
     }
 }
 

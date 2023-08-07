@@ -6,6 +6,7 @@ dataShader['image'] = {
         attribute vec2 a_texcoord;
         uniform mat4 u_projection;
         uniform vec2 u_resolution;
+        uniform vec3 u_camera;
         uniform vec2 u_texsize;
         uniform vec3 u_position;
         varying vec2 v_texcoord;
@@ -31,7 +32,7 @@ dataShader['image'] = {
         }
 
         void main() {
-            mat4 matrix = matrixTranslate(u_projection, positionCenter(u_position, u_texsize));
+            mat4 matrix = matrixTranslate(u_projection, positionCenter(u_position + u_camera, u_texsize));
             matrix = matrixScale(matrix, u_texsize);
             gl_Position = matrix * a_vertcoord;
             v_texcoord = a_texcoord;

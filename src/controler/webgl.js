@@ -89,6 +89,7 @@ class Webgl {
         this.textureLoc = gl.getUniformLocation(program, "u_texture")
         this.positionLoc = gl.getUniformLocation(program, "u_position")
         this.resolutionLoc = gl.getUniformLocation(program, "u_resolution")
+        this.cameraLoc = gl.getUniformLocation(program, "u_camera")
         this.texSizeLoc = gl.getUniformLocation(program, "u_texsize")
         
         // Set Shader Program
@@ -122,6 +123,10 @@ class Webgl {
 
         gl.viewport(0, 0, size.w, size.h)
         gl.uniform2f(this.resolutionLoc, size.w, size.h)
+    }
+
+    changeCamera(position) {
+        gl.uniform3f(this.cameraLoc, position.x, position.y, 0.0)
     }
     
     loadImageTexture(img) {
