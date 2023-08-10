@@ -385,6 +385,7 @@ class Camera {
     setPosition(pos = {x: null, y: null}) {
         if (pos.x != null) {this.#pos.x = pos.x}
         if (pos.y != null) {this.#pos.y = pos.y}
+        webgl.changeCamera(this.#pos)
     }
 
     getFollowSprite(spriteID) {

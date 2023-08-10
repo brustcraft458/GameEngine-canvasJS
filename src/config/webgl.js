@@ -32,7 +32,7 @@ dataShader['image'] = {
         }
 
         void main() {
-            mat4 matrix = matrixTranslate(u_projection, positionCenter(u_position + u_camera, u_texsize));
+            mat4 matrix = matrixTranslate(u_projection, positionCenter(u_position, u_texsize) + u_camera);
             matrix = matrixScale(matrix, u_texsize);
             gl_Position = matrix * a_vertcoord;
             v_texcoord = a_texcoord;
